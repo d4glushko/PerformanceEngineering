@@ -6,28 +6,34 @@
 
 using namespace std;
 
-#define N 800
+#define N 300
 
 const float sec_const = 1000000.0;
 
 void add_simple(double** a, double** b, double** res) {
+    int iterations = 0;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
+            iterations++;
             res[i][j] = a[i][j] + b[i][j];
         }
     }
+    printf("Add iterations: %d\n", iterations);
 }
 
 void mult_simple(double** a, double** b, double** res) {
+    int iterations = 0;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             double sum = 0;
             for (int k = 0; k < N; k++) {
+                iterations++;
                 sum += a[i][k] * b[k][j];
             }
             res[i][j] = sum;
         }
     }
+    printf("Mult iterations: %d\n", iterations);
 }
 
 void mult_and_add_simple(double** a, double** b, double** c, double** d, double** res) {
@@ -100,7 +106,9 @@ int main(int argc, char *argv[]) {
     end_t = clock();
     clock_delta = end_t - start_t;
     clock_delta_sec = (double) (clock_delta / sec_const);
-    printf("Simple mult and add: \t %.6f \t\n", clock_delta_sec);
+    
     // printf("res1:\n");
     // print_matrix(res1);
+
+    printf("Simple mult and add: \t %.6f \t\n", clock_delta_sec);
 }

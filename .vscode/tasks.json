@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "makefile",
+      "command": "make",
+      "args": [
+        "all",
+      ],
+      // use options.cwd property if the Makefile is not in the project root ${workspaceRoot} dir
+      "options": {
+        "cwd": "${fileDirname}"
+      },
+    }
+  ],
+  "version": "2.0.0"
+}

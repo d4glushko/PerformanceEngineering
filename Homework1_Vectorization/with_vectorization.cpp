@@ -6,57 +6,63 @@
 
 using namespace std;
 
-#define N 800
+#define N 300
 
 const float sec_const = 1000000.0;
 
 void add_intrinsic(double** a, double** b, double** res) {
     int pack_size = 4;
     int packs_count = (int)(N / pack_size);
+    int packed_length = pack_size * packs_count;
+    int iterations = 0;
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < packs_count; j += pack_size) {
+        for (int j = 0; j < packed_length; j += pack_size) {
+            iterations++;
             __m256d veca = _mm256_setr_pd(a[i][j+0], a[i][j+1], a[i][j+2], a[i][j+3]);
             __m256d vecb = _mm256_setr_pd(b[i][j+0], b[i][j+1], b[i][j+2], b[i][j+3]);
             __m256d sum = _mm256_add_pd(veca, vecb);
-            double* sum_result = (double*)&sum;
-            res[i][j+0] = sum_result[0];
-            res[i][j+1] = sum_result[1];
-            res[i][j+2] = sum_result[2];
-            res[i][j+3] = sum_result[3];
+            res[i][j+0] = sum[0];
+            res[i][j+1] = sum[1];
+            res[i][j+2] = sum[2];
+            res[i][j+3] = sum[3];
         }
-        int start = pack_size * packs_count;
-        for (int j = start; j < N; j++) {
+        for (int j = packed_length; j < N; j++) {
+            iterations++;
             res[i][j] = a[i][j] + b[i][j];
         }
     }
+    printf("Add iterations: %d\n", iterations);
 }
 
 void mult_intrinsic(double** a, double** b, double** res) {
     int pack_size = 4;
     int packs_count = (int)(N / pack_size);
+    int packed_length = pack_size * packs_count;
+    int iterations = 0;
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < packs_count; j += pack_size) {
+        for (int j = 0; j < packed_length; j += pack_size) {
             __m256d sum = _mm256_setr_pd(0,0,0,0);
             for (int k = 0; k < N; k++) {
+                iterations++;
                 __m256d veca = _mm256_setr_pd(a[i][k], a[i][k], a[i][k], a[i][k]);
                 __m256d vecb = _mm256_setr_pd(b[k][j+0], b[k][j+1], b[k][j+2], b[k][j+3]);
                 sum = _mm256_fmadd_pd(veca, vecb, sum);
             }
-            double* sum_result = (double*)&sum;
-            res[i][j+0] = sum_result[0];
-            res[i][j+1] = sum_result[1];
-            res[i][j+2] = sum_result[2];
-            res[i][j+3] = sum_result[3];
+            res[i][j+0] = sum[0];
+            res[i][j+1] = sum[1];
+            res[i][j+2] = sum[2];
+            res[i][j+3] = sum[3];
         }
-        int start = pack_size * packs_count;
-        for (int j = start; j < N; j++) {
+        for (int j = packed_length; j < N; j++) {
             double sum = 0;
             for (int k = 0; k < N; k++) {
+                iterations++;
                 sum += a[i][k] * b[k][j];
             }
             res[i][j] = sum;
         }
     }
+    printf("Mult iterations: %d\n", iterations);
 }
 
 void mult_and_add_intrinsic(double** a, double** b, double** c, double** d, double** res) {
@@ -126,10 +132,13 @@ int main(int argc, char *argv[]) {
     }
     start_t = clock();
     mult_and_add_intrinsic(a, b, c, d, res2);
+
     end_t = clock();
     clock_delta = end_t - start_t;
     clock_delta_sec = (double) (clock_delta / sec_const);
-    printf("Intrinsic mult and add: \t %.6f \t\n", clock_delta_sec);
+
     // printf("res2:\n");
     // print_matrix(res2);
+
+    printf("Intrinsic mult and add: \t %.6f \t\n", clock_delta_sec);
 }

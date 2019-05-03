@@ -1,2 +1,2 @@
 all:
-	g++ -O3 -g3 -o cpu_sum ./cpu_sum.cpp
+	g++ -O3 -g3 -o compiled/cpu_sum ./cpu_sum.cpp
