@@ -18,13 +18,10 @@ void add_intrinsic(double** a, double** b, double** res) {
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < packed_length; j += pack_size) {
             iterations++;
-            __m256d veca = _mm256_setr_pd(a[i][j+0], a[i][j+1], a[i][j+2], a[i][j+3]);
-            __m256d vecb = _mm256_setr_pd(b[i][j+0], b[i][j+1], b[i][j+2], b[i][j+3]);
+            __m256d veca = _mm256_loadu_pd(&a[i][j]);
+            __m256d vecb = _mm256_loadu_pd(&b[i][j]);
             __m256d sum = _mm256_add_pd(veca, vecb);
-            res[i][j+0] = sum[0];
-            res[i][j+1] = sum[1];
-            res[i][j+2] = sum[2];
-            res[i][j+3] = sum[3];
+            _mm256_storeu_pd(&res[i][j], sum);
         }
         for (int j = packed_length; j < N; j++) {
             iterations++;
@@ -45,16 +42,10 @@ void mult_intrinsic(double** a, double** b, double** res) {
             for (int k = 0; k < N; k++) {
                 iterations++;
                 __m256d veca = _mm256_set1_pd (a[i][k]);
-                // __m256d vecb = _mm256_set_pd (b[k][j+3], b[k][j+2], b[k][j+1], b[k][j]);
-                printf("j: %d\n", j);
-                __m256d vecb = _mm256_load_pd(&b[k][j]);
+                __m256d vecb = _mm256_loadu_pd(&b[k][j]);
                 sum = _mm256_fmadd_pd(veca, vecb, sum);
             }
-            //  _mm256_store_pd(&res[i][j], sum);
-            res[i][j] = sum[0];
-            res[i][j+1] = sum[1];
-            res[i][j+2] = sum[2];
-            res[i][j+3] = sum[3];
+            _mm256_storeu_pd(&res[i][j], sum);
         }
         for (int j = packed_length; j < N; j++) {
             double sum = 0;
