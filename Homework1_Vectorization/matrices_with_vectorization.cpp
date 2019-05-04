@@ -45,10 +45,12 @@ void mult_intrinsic(double** a, double** b, double** res) {
             for (int k = 0; k < N; k++) {
                 iterations++;
                 __m256d veca = _mm256_set1_pd (a[i][k]);
-                __m256d vecb = _mm256_set_pd (b[k][j+3], b[k][j+2], b[k][j+1], b[k][j]);
-                // __m256d vecb = _mm256_load_pd(&b[k][j]);
+                // __m256d vecb = _mm256_set_pd (b[k][j+3], b[k][j+2], b[k][j+1], b[k][j]);
+                printf("j: %d\n", j);
+                __m256d vecb = _mm256_load_pd(&b[k][j]);
                 sum = _mm256_fmadd_pd(veca, vecb, sum);
             }
+            //  _mm256_store_pd(&res[i][j], sum);
             res[i][j] = sum[0];
             res[i][j+1] = sum[1];
             res[i][j+2] = sum[2];

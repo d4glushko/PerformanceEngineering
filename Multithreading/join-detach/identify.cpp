@@ -9,10 +9,10 @@ int main()
     std::thread t1(thread_function);
     std::thread t2(thread_function);
  
-    std::cout<<"From Main ID T1 = "<<t1.get_id()<<std::endl;    
-    std::cout<<"From Main ID T2 = "<<t2.get_id()<<std::endl;    
- 
-    t1.join();    
-    t2.join();    
+    std::cout<<"From Main ID T1 = "<<t1.get_id()<<std::endl;
+    std::cout<<"From Main ID T2 = "<<t2.get_id()<<std::endl;
+
+    t1.join();
+    t2.join();
     return 0;
 }
