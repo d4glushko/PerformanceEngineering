@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define N 800
+#define N 1000
 
 const float sec_const = 1000000.0;
 

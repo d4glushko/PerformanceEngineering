@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define N 800
+#define N 1000
 
 const float sec_const = 1000000.0;
 
@@ -41,14 +41,15 @@ void mult_intrinsic(double** a, double** b, double** res) {
     int iterations = 0;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < packed_length; j += pack_size) {
-            __m256d sum = _mm256_setr_pd(0,0,0,0);
+            __m256d sum = _mm256_setzero_pd();
             for (int k = 0; k < N; k++) {
                 iterations++;
-                __m256d veca = _mm256_setr_pd(a[i][k], a[i][k], a[i][k], a[i][k]);
-                __m256d vecb = _mm256_load_pd(&b[k][j]);
+                __m256d veca = _mm256_set1_pd (a[i][k]);
+                __m256d vecb = _mm256_set_pd (b[k][j+3], b[k][j+2], b[k][j+1], b[k][j]);
+                // __m256d vecb = _mm256_load_pd(&b[k][j]);
                 sum = _mm256_fmadd_pd(veca, vecb, sum);
             }
-            res[i][j+0] = sum[0];
+            res[i][j] = sum[0];
             res[i][j+1] = sum[1];
             res[i][j+2] = sum[2];
             res[i][j+3] = sum[3];
