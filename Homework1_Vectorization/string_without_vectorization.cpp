@@ -4,11 +4,10 @@
 #include <sys/times.h>
 #include <time.h>
 #include <string.h>
-#include <string>
 
 using namespace std;
 
-#define N 1000000
+#define N 100000000
 
 const float sec_const = 1000000.0;
 
@@ -39,25 +38,27 @@ int main(int argc, char *argv[]) {
     clock_t end_t;
     clock_t clock_delta;
     double clock_delta_sec;
-    srand(1);
-    
-    std::string str_template = "This is usually the best way to declare and initialize a string. The character array is declared explicitly. \
-        There is no size declaration for the array; just enough is allocated for the string, because the compiler knows \
-        how long the string constant is. The compiler stores the string constant in the character array and adds a null character \
-        to the end.";
-    
+
     char const *substr = "memory";
-    std::string s;
-
-    for (int i = 0; i < 10000; i++) {
-        s.append(str_template);
-        if (i == 7000) {
-            s.append(substr);
+    char *str = (char *)malloc(N * sizeof(char));
+    int position = N - strlen(substr) - 1;
+    int const char_start = 48;
+    int const char_end = 122;
+    for (int i = 0, j = char_start; i < position; i++){
+        str[i] = (char)j;
+        if (j == char_end) {
+            j = char_start;
+        } 
+        else
+        {
+            j++;
         }
+        
     }
-
-    char str[s.size() + 1];
-	strcpy(str, s.c_str());
+    for (int i = 0; i < strlen(substr); i++){
+        str[i + position] = substr[i];
+    }
+    str[N - 1] = '\0';
 
     start_t = clock();
     int first_occurence = find_first_occurence(str, substr);
@@ -65,9 +66,10 @@ int main(int argc, char *argv[]) {
     clock_delta = end_t - start_t;
     clock_delta_sec = (double) (clock_delta / sec_const);
 
-    // printf("Str: %s\n", str);
+    // printf("Str: %s\n", str);  // commented because string is too long
     printf("Substr: %s\n", substr);
-    printf("First occurence: %d\n", first_occurence);
+    printf("Position: %d\n", position);
+    printf("First occurence (must be equal to position): %d\n", first_occurence);
 
     printf("Simple find first occurence: \t %.6f \t\n", clock_delta_sec);
 }
