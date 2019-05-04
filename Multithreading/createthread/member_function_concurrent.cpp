@@ -36,11 +36,11 @@ int main()
   ReaderWriter p;
   thread t1(&ReaderWriter::process, &p);
   //Lets add more threads:
-  //thread t2(&ReaderWriter::process, &p);
-  //thread t3(&ReaderWriter::process, &p);
+  thread t2(&ReaderWriter::process, &p);
+  thread t3(&ReaderWriter::process, &p);
   t1.join();
-  //t2.join();
-  //t3.join();
+  t2.join();
+  t3.join();
   
   
   return 0;
