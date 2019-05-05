@@ -14,24 +14,16 @@ const float sec_const = 1000000.0;
 int find_first_occurence(char const *str, char const *substr) {
     int len_str = strlen(str);
     int len_substr = strlen(substr);
-    int first_occurence = -1;
+    char first_elem_to_find = substr[0];
     for (int i = 0; i < len_str; i++) {
-        if (str[i] == substr[0]) {
-            bool found = true;
-            for (int j = 1; j < len_substr; j++) {
-                if (str[i+j] != substr[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) {
-                first_occurence = i;
-                break;
+        if (str[i] == first_elem_to_find) {
+            if (memcmp(str + i + 1, substr + 1, len_substr - 1) == 0) {
+                return i;
             }
         } 
     }
-    return first_occurence;
-} 
+    return -1;
+}
 
 int main(int argc, char *argv[]) {
     clock_t start_t;
