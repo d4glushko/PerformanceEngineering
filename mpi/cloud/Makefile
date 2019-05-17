@@ -1,4 +1,4 @@
 all:
 	mpicc ./hello_world.c -o ./hello_world
-	mpicc ./messaging_example.c -o ./messaging_example
+	mpicc ./basic_message.c -o ./basic_message
 	mpicc ./pi.c -o ./pi
