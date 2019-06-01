@@ -43,10 +43,20 @@ BMPInfo readBMP(const char* filename)
     return bmpInfo;
 }
 
-u_int64_t* cpu_integral_image(u_int64_t* array, int size, int width) {
-    u_int64_t *result = (u_int64_t *)malloc(size * sizeof(u_int64_t));
+unsigned char* cpu_integral_image(unsigned char* array, int size, int width, int height) {
+    unsigned char *result = (unsigned char *)malloc(size * sizeof(unsigned char));
     for (int i = 0; i < size; i++) {
-        result += array[i];
+        result[i] = array[i];
+    }
+    for (int i = 0; i < height; i++) {
+        for (int j = 1; j < width; j++) {
+            result[i * width + j] += result[i * width + j - 1];
+        }
+    }
+    for (int i = 1; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            result[i * width + j] += result[(i - 1) * width + j];
+        }
     }
     return result;
 }
@@ -58,27 +68,24 @@ int main(int argc, char *argv[]) {
     clock_t end_t;
     clock_t clock_delta;
     double clock_delta_sec;
-    srand(1);
 
-    const char *filename = "2.bmp";
-
+    const char *filename = "1.bmp";
     BMPInfo bmpInfo = readBMP(filename);
 
-    int r_channel_data_size = bmpInfo.size / 3;
-    u_int64_t* r_channel_data = new u_int64_t[r_channel_data_size];
+    int one_color_channel_data_size = bmpInfo.size / 3;
+    unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
 
-    for(int i = 0; i < r_channel_data_size; i += 1)
+    for(int i = 0; i < one_color_channel_data_size; i++)
     {
-        r_channel_data[i] = (u_int64_t)bmpInfo.data[3 * i];
-        printf("a[%d]: R: %d G: %d B: %d \n", i, bmpInfo.data[3 * i], bmpInfo.data[2 * i], bmpInfo.data[1 * i]);
+        one_color_channel_data[i] = bmpInfo.data[3 * i];
     }
 
     start_t = clock();
-    // int sum = cpu_array_sum(r_channel_data, r_channel_data_size);
+    unsigned char* result = cpu_integral_image(one_color_channel_data, one_color_channel_data_size, bmpInfo.width, bmpInfo.height);
     end_t = clock();
+
     clock_delta = end_t - start_t;
     clock_delta_sec = (double) (clock_delta / sec_const);
 
-    // printf("Sum: \t %d \t\n", sum);
-    printf("CPU sum: \t %.6f \t\n", clock_delta_sec);
+    printf("CPU integral image: \t %.6f \t\n", clock_delta_sec);
 }

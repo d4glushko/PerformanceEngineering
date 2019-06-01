@@ -56,24 +56,23 @@ int main(int argc, char *argv[]) {
     clock_t end_t;
     clock_t clock_delta;
     double clock_delta_sec;
-    srand(1);
 
-    const char *filename = "2.bmp";
+    const char *filename = "1.bmp";
 
     BMPInfo bmpInfo = readBMP(filename);
 
-    int r_channel_data_size = bmpInfo.size / 3;
-    u_int64_t* r_channel_data = new u_int64_t[r_channel_data_size];
+    int one_color_channel_data_size = bmpInfo.size / 3;
+    u_int64_t* one_color_channel_data = new u_int64_t[one_color_channel_data_size];
 
-    for(int i = 0; i < r_channel_data_size; i += 1)
+    for(int i = 0; i < one_color_channel_data_size; i++)
     {
-        r_channel_data[i] = (u_int64_t)bmpInfo.data[3 * i];
-        printf("a[%d]: R: %d G: %d B: %d \n", i, bmpInfo.data[3 * i], bmpInfo.data[3 * i + 1], bmpInfo.data[3 * i + 2]);
+        one_color_channel_data[i] = (u_int64_t)bmpInfo.data[3 * i];
     }
 
     start_t = clock();
-    int sum = cpu_array_sum(r_channel_data, r_channel_data_size);
+    int sum = cpu_array_sum(one_color_channel_data, one_color_channel_data_size);
     end_t = clock();
+
     clock_delta = end_t - start_t;
     clock_delta_sec = (double) (clock_delta / sec_const);
 
