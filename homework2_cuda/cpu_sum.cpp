@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const float sec_const = 1000000.0;
+const float msec_const = 1000.0;
 
 struct BMPInfo 
 { 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     clock_t start_t;
     clock_t end_t;
     clock_t clock_delta;
-    double clock_delta_sec;
+    double clock_delta_msec;
 
     const char *filename = "1.bmp";
 
@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
     end_t = clock();
 
     clock_delta = end_t - start_t;
-    clock_delta_sec = (double) (clock_delta / sec_const);
+    clock_delta_msec = (double) (clock_delta / msec_const);
 
     printf("Sum: \t %d \t\n", sum);
-    printf("CPU sum: \t %.6f \t\n", clock_delta_sec);
+    printf("CPU sum: \t %.6f ms \t\n", clock_delta_msec);
 }

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const float sec_const = 1000000.0;
+const float msec_const = 1000.0;
 
 struct BMPInfo 
 { 
@@ -53,9 +53,9 @@ unsigned char* cpu_integral_image(unsigned char* array, int size, int width, int
             result[i * width + j] += result[i * width + j - 1];
         }
     }
-    for (int i = 1; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            result[i * width + j] += result[(i - 1) * width + j];
+    for (int i = 0; i < width; i++) {
+        for (int j = 1; j < height; j++) {
+            result[j * width + i] += result[(j - 1) * width + i];
         }
     }
     return result;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     clock_t start_t;
     clock_t end_t;
     clock_t clock_delta;
-    double clock_delta_sec;
+    double clock_delta_msec;
 
     const char *filename = "1.bmp";
     BMPInfo bmpInfo = readBMP(filename);
@@ -85,7 +85,9 @@ int main(int argc, char *argv[]) {
     end_t = clock();
 
     clock_delta = end_t - start_t;
-    clock_delta_sec = (double) (clock_delta / sec_const);
+    clock_delta_msec = (double) (clock_delta / msec_const);
 
-    printf("CPU integral image: \t %.6f \t\n", clock_delta_sec);
+    printf("Last elements: %d, %d, %d\n", result[one_color_channel_data_size-3], result[one_color_channel_data_size-2], result[one_color_channel_data_size-1]);
+
+    printf("CPU integral image: \t %.6f ms \t\n", clock_delta_msec);
 }
