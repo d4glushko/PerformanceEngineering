@@ -58,11 +58,18 @@ u_int64_t multithread_array_sum(unsigned char* array, unsigned long size) {
         threads_number = 1;
     }
 
-    unsigned long items_per_one_thread = ceil(size / (double)threads_number);
+    unsigned long items_per_one_thread = int(size / threads_number);
     
     u_int64_t *results = (u_int64_t *)malloc(threads_number * sizeof(u_int64_t));
     thread threads[threads_number];
 
+    threads[threads_number - 1] = thread(
+        array_sum,
+        ref(results[threads_number - 1]),
+        ref(array),
+        (threads_number - 1) * items_per_one_thread,
+        size
+    );
     for (int i = 0; i < threads_number - 1; i++) {
         threads[i] = thread(
             array_sum, 
@@ -72,13 +79,6 @@ u_int64_t multithread_array_sum(unsigned char* array, unsigned long size) {
             (i + 1) * items_per_one_thread
         );
     }
-    threads[threads_number - 1] = thread(
-        array_sum,
-        ref(results[threads_number - 1]),
-        ref(array),
-        (threads_number - 1) * items_per_one_thread,
-        size
-    );
 
     u_int64_t result = 0;
     for (int i = 0; i < threads_number; i++){

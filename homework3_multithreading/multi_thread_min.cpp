@@ -60,11 +60,18 @@ unsigned char multithread_array_min(unsigned char* array, unsigned long size) {
         threads_number = 1;
     }
 
-    unsigned long items_per_one_thread = ceil(size / (double)threads_number);
+    unsigned long items_per_one_thread = int(size / threads_number);
     
     unsigned char *results = (unsigned char *)malloc(threads_number * sizeof(unsigned char));
     thread threads[threads_number];
 
+    threads[threads_number - 1] = thread(
+        array_min,
+        ref(results[threads_number - 1]),
+        ref(array),
+        (threads_number - 1) * items_per_one_thread,
+        size
+    );
     for (int i = 0; i < threads_number - 1; i++) {
         threads[i] = thread(
             array_min, 
@@ -74,13 +81,6 @@ unsigned char multithread_array_min(unsigned char* array, unsigned long size) {
             (i + 1) * items_per_one_thread
         );
     }
-    threads[threads_number - 1] = thread(
-        array_min,
-        ref(results[threads_number - 1]),
-        ref(array),
-        (threads_number - 1) * items_per_one_thread,
-        size
-    );
 
     unsigned char result = 255;
     for (int i = 0; i < threads_number; i++){
