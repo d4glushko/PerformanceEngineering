@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <sys/times.h>
 #include <time.h>
+#include <iostream>
+#include <thread>
+#include <fstream>
+#include <stdint.h>
+#include <cmath>
 
 using namespace std;
-
-const float msec_const = 1000.0;
 
 struct BMPInfo 
 { 
@@ -41,41 +44,70 @@ BMPInfo readBMP(const char* filename)
     return bmpInfo;
 }
 
-int cpu_array_sum(u_int64_t* array, int size) {
-    int result = 0;
-    for (int i = 0; i < size; i++) {
-        result += array[i];
+void array_sum(u_int64_t const & result, unsigned char* array, unsigned long start, unsigned long end) {
+    u_int64_t & res = const_cast<u_int64_t &>(result);
+    res = 0;
+    for (unsigned long i = start; i < end; i++) {
+        res += array[i];
     }
+}
+
+u_int64_t multithread_array_sum(unsigned char* array, unsigned long size) {
+    unsigned int threads_number = thread::hardware_concurrency() - 3;
+    if (threads_number < 1) {
+        threads_number = 1;
+    }
+
+    unsigned long items_per_one_thread = ceil(size / (double)threads_number);
+    
+    u_int64_t *results = (u_int64_t *)malloc(threads_number * sizeof(u_int64_t));
+    thread threads[threads_number];
+
+    for (int i = 0; i < threads_number - 1; i++) {
+        threads[i] = thread(
+            array_sum, 
+            ref(results[i]), 
+            ref(array),
+            i * items_per_one_thread,
+            (i + 1) * items_per_one_thread
+        );
+    }
+    threads[threads_number - 1] = thread(
+        array_sum,
+        ref(results[threads_number - 1]),
+        ref(array),
+        (threads_number - 1) * items_per_one_thread,
+        size
+    );
+
+    u_int64_t result = 0;
+    for (int i = 0; i < threads_number; i++){
+        threads[i].join();
+        result += results[i];
+    }
+    free(results);
     return result;
 }
 
-
-
 int main(int argc, char *argv[]) {
-    clock_t start_t;
-    clock_t end_t;
-    clock_t clock_delta;
-    double clock_delta_msec;
-
-    const char *filename = "1.bmp";
+    const char *filename = "2.bmp";
 
     BMPInfo bmpInfo = readBMP(filename);
 
-    int one_color_channel_data_size = bmpInfo.size / 3;
-    u_int64_t* one_color_channel_data = new u_int64_t[one_color_channel_data_size];
+    unsigned long one_color_channel_data_size = bmpInfo.size / 3;
+    unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
 
     for(int i = 0; i < one_color_channel_data_size; i++)
     {
-        one_color_channel_data[i] = (u_int64_t)bmpInfo.data[3 * i];
+        one_color_channel_data[i] = bmpInfo.data[3 * i];
     }
 
-    start_t = clock();
-    int sum = cpu_array_sum(one_color_channel_data, one_color_channel_data_size);
-    end_t = clock();
+    auto t_start = std::chrono::high_resolution_clock::now();
+    u_int64_t sum = multithread_array_sum(one_color_channel_data, one_color_channel_data_size);
+    auto t_end = std::chrono::high_resolution_clock::now();
 
-    clock_delta = end_t - start_t;
-    clock_delta_msec = (double) (clock_delta / msec_const);
+    printf("Sum: \t %lu \t\n", sum);
+    printf("CPU sum: \t %.6f ms \t\n", std::chrono::duration<double, std::milli>(t_end-t_start).count());
 
-    printf("Sum: \t %d \t\n", sum);
-    printf("CPU sum: \t %.6f ms \t\n", clock_delta_msec);
+    free(one_color_channel_data);
 }

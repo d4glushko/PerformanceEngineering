@@ -4,6 +4,7 @@
         "mpi.h": "c",
         "string_view": "cpp",
         "initializer_list": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "chrono": "cpp"
     }
 }
