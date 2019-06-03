@@ -55,8 +55,7 @@ int main(int argc, char *argv[]) {
     clock_t clock_delta;
     double clock_delta_msec;
 
-    const char *filename = "2.bmp";
-
+    const char *filename = "1.bmp";
     BMPInfo bmpInfo = readBMP(filename);
 
     unsigned long one_color_channel_data_size = bmpInfo.size / 3;
@@ -64,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     for(unsigned long i = 0; i < one_color_channel_data_size; i++)
     {
-        one_color_channel_data[i] = (unsigned char)bmpInfo.data[3 * i];
+        one_color_channel_data[i] = bmpInfo.data[3 * i];
     }
 
     start_t = clock();

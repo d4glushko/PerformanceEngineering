@@ -90,14 +90,14 @@ u_int64_t multithread_array_sum(unsigned char* array, unsigned long size) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *filename = "2.bmp";
+    const char *filename = "1.bmp";
 
     BMPInfo bmpInfo = readBMP(filename);
 
     unsigned long one_color_channel_data_size = bmpInfo.size / 3;
     unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
 
-    for(int i = 0; i < one_color_channel_data_size; i++)
+    for(unsigned long i = 0; i < one_color_channel_data_size; i++)
     {
         one_color_channel_data[i] = bmpInfo.data[3 * i];
     }

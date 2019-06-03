@@ -43,9 +43,9 @@ BMPInfo readBMP(const char* filename)
     return bmpInfo;
 }
 
-unsigned char* cpu_integral_image(unsigned char* array, int size, int width, int height) {
+unsigned char* cpu_integral_image(unsigned char* array, unsigned long size, int width, int height) {
     unsigned char *result = (unsigned char *)malloc(size * sizeof(unsigned char));
-    for (int i = 0; i < size; i++) {
+    for (unsigned long i = 0; i < size; i++) {
         result[i] = array[i];
     }
     for (int i = 0; i < height; i++) {
@@ -72,10 +72,10 @@ int main(int argc, char *argv[]) {
     const char *filename = "1.bmp";
     BMPInfo bmpInfo = readBMP(filename);
 
-    int one_color_channel_data_size = bmpInfo.size / 3;
+    unsigned long one_color_channel_data_size = bmpInfo.size / 3;
     unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
 
-    for(int i = 0; i < one_color_channel_data_size; i++)
+    for(unsigned long i = 0; i < one_color_channel_data_size; i++)
     {
         one_color_channel_data[i] = bmpInfo.data[3 * i];
     }
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
     clock_delta_msec = (double) (clock_delta / msec_const);
 
     printf("Last elements: %d, %d, %d\n", result[one_color_channel_data_size-3], result[one_color_channel_data_size-2], result[one_color_channel_data_size-1]);
-
     printf("CPU integral image: \t %.6f ms \t\n", clock_delta_msec);
+
+    free(one_color_channel_data);
 }
