@@ -41,15 +41,13 @@ BMPInfo readBMP(const char* filename)
     return bmpInfo;
 }
 
-int cpu_array_sum(u_int64_t* array, int size) {
-    int result = 0;
-    for (int i = 0; i < size; i++) {
+u_int64_t cpu_array_sum(unsigned char* array, unsigned long size) {
+    u_int64_t result = 0;
+    for (unsigned long i = 0; i < size; i++) {
         result += array[i];
     }
     return result;
 }
-
-
 
 int main(int argc, char *argv[]) {
     clock_t start_t;
@@ -58,24 +56,25 @@ int main(int argc, char *argv[]) {
     double clock_delta_msec;
 
     const char *filename = "1.bmp";
-
     BMPInfo bmpInfo = readBMP(filename);
 
-    int one_color_channel_data_size = bmpInfo.size / 3;
-    u_int64_t* one_color_channel_data = new u_int64_t[one_color_channel_data_size];
+    unsigned long one_color_channel_data_size = bmpInfo.size / 3;
+    unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
 
-    for(int i = 0; i < one_color_channel_data_size; i++)
+    for(unsigned long i = 0; i < one_color_channel_data_size; i++)
     {
-        one_color_channel_data[i] = (u_int64_t)bmpInfo.data[3 * i];
+        one_color_channel_data[i] = bmpInfo.data[3 * i];
     }
 
     start_t = clock();
-    int sum = cpu_array_sum(one_color_channel_data, one_color_channel_data_size);
+    u_int64_t sum = cpu_array_sum(one_color_channel_data, one_color_channel_data_size);
     end_t = clock();
 
     clock_delta = end_t - start_t;
     clock_delta_msec = (double) (clock_delta / msec_const);
 
-    printf("Sum: \t %d \t\n", sum);
+    printf("Sum: \t %lu \t\n", sum);
     printf("CPU sum: \t %.6f ms \t\n", clock_delta_msec);
+
+    free(one_color_channel_data);
 }
