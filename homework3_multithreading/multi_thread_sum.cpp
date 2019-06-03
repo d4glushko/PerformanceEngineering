@@ -22,7 +22,7 @@ BMPInfo readBMP(const char* filename)
     int i;
     FILE* f = fopen(filename, "rb");
     unsigned char info[54];
-    auto a = fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+    size_t a = fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
 
     // extract image height and width from header
     int width = *(int*)&info[18];
