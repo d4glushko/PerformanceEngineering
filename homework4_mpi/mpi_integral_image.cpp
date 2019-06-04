@@ -3,20 +3,19 @@
 #include <stdlib.h>
 #include <sys/times.h>
 #include <time.h>
-#include <iostream>
-#include <thread>
 #include <fstream>
 #include <stdint.h>
 #include <cmath>
+#include <mpi.h>
 
 using namespace std;
+
+const float msec_const = 1000.0;
 
 struct BMPInfo 
 { 
    unsigned char* data; 
    int size;
-   int width;
-   int height;
 };
 
 BMPInfo readBMP(const char* filename)
@@ -31,7 +30,7 @@ BMPInfo readBMP(const char* filename)
     int height = *(int*)&info[22];
 
     int size = 3 * width * height;
-    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    unsigned char* data = (unsigned char *)malloc(size * sizeof(unsigned char)); // allocate 3 bytes per pixel
     a = fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
     fclose(f);
 
@@ -41,110 +40,155 @@ BMPInfo readBMP(const char* filename)
             data[i] = data[i+2];
             data[i+2] = tmp;
     }
-    BMPInfo bmpInfo = {data, size, width, height};
+    BMPInfo bmpInfo = {data, size};
 
     return bmpInfo;
 }
 
-void integral_image_rows(unsigned char* array, int  width, int start_row, int end_row) {
+unsigned char* integral_image_rows(unsigned char* array, int  width, int start_row, int end_row) {
     for (int i = start_row; i < end_row; i++) {
         for (int j = 1; j < width; j++) {
             array[i * width + j] += array[i * width + j - 1];
         }
     }
+    return array;
 }
 
-void integral_image_columns(unsigned char* array, int width, int  height, int start_col, int end_col) {
+unsigned char* integral_image_columns(unsigned char* array, int width, int  height, int start_col, int end_col) {
     for (int i = start_col; i < end_col; i++) {
         for (int j = 1; j < height; j++) {
             array[j * width + i] += array[(j - 1) * width + i];
         }
     }
+    return array;
 }
 
-unsigned char* multithread_integral_image(unsigned char* array, unsigned long size, int width, int height) {
+unsigned char* mpi_integral_image(unsigned char* array, unsigned long size, int width, int height, int my_id, int master_id, int num_procs) {
     unsigned char *result = (unsigned char *)malloc(size * sizeof(unsigned char));
+    unsigned char *integral_image_res = (unsigned char *)malloc(size * sizeof(unsigned char));
     for (unsigned long i = 0; i < size; i++) {
         result[i] = array[i];
     }
+    MPI_Status status;
 
-    unsigned int threads_number = thread::hardware_concurrency() - 3;
-    if (threads_number < 1) {
-        threads_number = 1;
+    unsigned long rows_per_one_device = int(height / num_procs);
+
+    int start_row, end_row;
+    start_row = my_id * rows_per_one_device;
+    if (my_id == num_procs - 1) {
+        end_row = height;
+    } else {
+        end_row = (my_id + 1) * rows_per_one_device;
+    }
+    result = integral_image_rows(result, width, start_row, end_row);
+    integral_image_res = result;
+
+    if (my_id != master_id) {
+        MPI_Send (result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
+    } else {
+        for (int i = 1; i < num_procs; i++) {
+            MPI_Recv(result, size, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            if (status.MPI_SOURCE == num_procs - 1) {
+                end_row = height;
+            } else {
+                end_row = (status.MPI_SOURCE + 1) * rows_per_one_device;
+            }
+            for (int i = start_row; i < end_row; i++) {
+                for (int j = 1; j < width; j++) {
+                    integral_image_res[i * width + j] = result[i * width + j];
+                }
+            }
+        }
     }
 
-    unsigned long rows_per_one_thread = int(height / threads_number);
-    
-    thread threads[threads_number];
+    MPI_Bcast(integral_image_res, size, MPI_UNSIGNED_CHAR, master_id, MPI_COMM_WORLD);
 
-    threads[threads_number - 1] = thread(
-        integral_image_rows,
-        ref(result),
-        width,
-        (threads_number - 1) * rows_per_one_thread,
-        height
-    );
-    for (int i = 0; i < threads_number - 1; i++) {
-        threads[i] = thread(
-            integral_image_rows,
-            ref(result),
-            width,
-            i * rows_per_one_thread,
-            (i + 1) * rows_per_one_thread
-        );
+    unsigned long cols_per_one_device = int(width / num_procs);
+
+    int start_col, end_col;
+    start_col = my_id * cols_per_one_device;
+    if (my_id == num_procs - 1) {
+        end_col = width;
+    } else {
+        end_col = (my_id + 1) * cols_per_one_device;
+    }
+    result = integral_image_columns(result, width, height, start_col, end_col);
+    integral_image_res = result;
+
+    if (my_id != master_id) {
+        MPI_Send (result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
+    } else {
+        for (int i = 1; i < num_procs; i++) {
+            MPI_Recv(result, size, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            if (status.MPI_SOURCE == num_procs - 1) {
+                end_col = width;
+            } else {
+                end_col = (status.MPI_SOURCE + 1) * cols_per_one_device;
+            }
+            for (int i = start_col; i < end_col; i++) {
+                for (int j = 1; j < height; j++) {
+                    integral_image_res[j * width + i] += result[j * width + i];
+                }
+            }
+        }
     }
 
-    for (int i = 0; i < threads_number; i++){
-        threads[i].join();
-    }
-
-    unsigned long cols_per_one_thread = int(width / threads_number);
-
-    threads[threads_number - 1] = thread(
-        integral_image_columns,
-        ref(result),
-        width,
-        height,
-        (threads_number - 1) * cols_per_one_thread,
-        width
-    );
-    for (int i = 0; i < threads_number - 1; i++) {
-        threads[i] = thread(
-            integral_image_columns,
-            ref(result),
-            width,
-            height,
-            i * cols_per_one_thread,
-            (i + 1) * cols_per_one_thread
-        );
-    }
-
-    for (int i = 0; i < threads_number; i++){
-        threads[i].join();
-    }
-
-    return result;
+    return integral_image_res;
 }
 
 int main(int argc, char *argv[]) {
-    const char *filename = "1.bmp";
+    clock_t start_t;
+    clock_t end_t;
+    clock_t clock_delta;
+    double clock_delta_msec;
+    int master = 0;
+    int my_id;
+    int numprocs;
+    int width;
+    int height;
+    BMPInfo bmpInfo;
+    unsigned long one_color_channel_data_size;
+    unsigned char* one_color_channel_data;
 
-    BMPInfo bmpInfo = readBMP(filename);
-
-    unsigned long one_color_channel_data_size = bmpInfo.size / 3;
-    unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
-
-    for(unsigned long i = 0; i < one_color_channel_data_size; i++)
+    MPI_Init ( &argc, &argv );
+    MPI_Comm_size ( MPI_COMM_WORLD, &numprocs );
+    MPI_Comm_rank ( MPI_COMM_WORLD, &my_id );
+    if (my_id == master)
     {
-        one_color_channel_data[i] = bmpInfo.data[3 * i];
+        const char *filename = "1.bmp";
+
+        bmpInfo = readBMP(filename);
+
+        one_color_channel_data_size = bmpInfo.size / 3;
     }
 
-    auto t_start = std::chrono::high_resolution_clock::now();
-    unsigned char* result = multithread_integral_image(one_color_channel_data, one_color_channel_data_size, bmpInfo.width, bmpInfo.height);
-    auto t_end = std::chrono::high_resolution_clock::now();
+    MPI_Bcast(&one_color_channel_data_size, 1, MPI_UNSIGNED_LONG, master, MPI_COMM_WORLD);
+    MPI_Bcast(&width, 1, MPI_INT, master, MPI_COMM_WORLD);
+    MPI_Bcast(&height, 1, MPI_INT, master, MPI_COMM_WORLD);
+    one_color_channel_data = (unsigned char *)malloc(one_color_channel_data_size * sizeof(unsigned char));
 
-    printf("Last elements: %d, %d, %d\n", result[one_color_channel_data_size-3], result[one_color_channel_data_size-2], result[one_color_channel_data_size-1]);
-    printf("CPU integral image: \t %.6f ms \t\n", std::chrono::duration<double, std::milli>(t_end-t_start).count());
+    if (my_id == master)
+    {
+        for(unsigned long i = 0; i < one_color_channel_data_size; i++)
+        {
+            one_color_channel_data[i] = bmpInfo.data[3 * i];
+        }
+    }
+    if (my_id == master) {
+        start_t = clock();
+    }
+    MPI_Bcast(one_color_channel_data, one_color_channel_data_size, MPI_UNSIGNED_CHAR, master, MPI_COMM_WORLD);
+    unsigned char* result = mpi_integral_image(one_color_channel_data, one_color_channel_data_size, width, height, my_id, master, numprocs);
+
+    if (my_id == master) {
+        end_t = clock();
+
+        clock_delta = end_t - start_t;
+        clock_delta_msec = (double) (clock_delta / msec_const);
+
+        printf("Last elements: %d, %d, %d\n", result[one_color_channel_data_size-3], result[one_color_channel_data_size-2], result[one_color_channel_data_size-1]);
+        printf("CPU integral image: \t %.6f ms \t\n", clock_delta_msec);
+    }
 
     free(one_color_channel_data);
 }
