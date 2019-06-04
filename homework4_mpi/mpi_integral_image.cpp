@@ -83,20 +83,25 @@ unsigned char* mpi_integral_image(unsigned char* array, unsigned long size, int 
         end_row = (my_id + 1) * rows_per_one_device;
     }
     result = integral_image_rows(result, width, start_row, end_row);
-    integral_image_res = result;
+    for (int i = start_row; i < end_row; i++) {
+        for (int j = 0; j < width; j++) {
+            integral_image_res[i * width + j] = result[i * width + j];
+        }
+    }
 
     if (my_id != master_id) {
-        MPI_Send (result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
+        MPI_Send(result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
     } else {
         for (int i = 1; i < num_procs; i++) {
             MPI_Recv(result, size, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            start_row = status.MPI_SOURCE * rows_per_one_device;
             if (status.MPI_SOURCE == num_procs - 1) {
                 end_row = height;
             } else {
                 end_row = (status.MPI_SOURCE + 1) * rows_per_one_device;
             }
             for (int i = start_row; i < end_row; i++) {
-                for (int j = 1; j < width; j++) {
+                for (int j = 0; j < width; j++) {
                     integral_image_res[i * width + j] = result[i * width + j];
                 }
             }
@@ -104,7 +109,10 @@ unsigned char* mpi_integral_image(unsigned char* array, unsigned long size, int 
     }
 
     MPI_Bcast(integral_image_res, size, MPI_UNSIGNED_CHAR, master_id, MPI_COMM_WORLD);
-
+    for (int i = 0; i < size; i++) {
+        result[i] = integral_image_res[i];
+    }
+    
     unsigned long cols_per_one_device = int(width / num_procs);
 
     int start_col, end_col;
@@ -115,13 +123,19 @@ unsigned char* mpi_integral_image(unsigned char* array, unsigned long size, int 
         end_col = (my_id + 1) * cols_per_one_device;
     }
     result = integral_image_columns(result, width, height, start_col, end_col);
-    integral_image_res = result;
+
+    for (int i = start_col; i < end_col; i++) {
+        for (int j = 1; j < height; j++) {
+            integral_image_res[j * width + i] = result[j * width + i];
+        }
+    }
 
     if (my_id != master_id) {
-        MPI_Send (result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
+        MPI_Send(result, size, MPI_UNSIGNED_CHAR, master_id, 1, MPI_COMM_WORLD);
     } else {
         for (int i = 1; i < num_procs; i++) {
             MPI_Recv(result, size, MPI_UNSIGNED_CHAR, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            start_col = status.MPI_SOURCE * cols_per_one_device;
             if (status.MPI_SOURCE == num_procs - 1) {
                 end_col = width;
             } else {
@@ -129,12 +143,17 @@ unsigned char* mpi_integral_image(unsigned char* array, unsigned long size, int 
             }
             for (int i = start_col; i < end_col; i++) {
                 for (int j = 1; j < height; j++) {
-                    integral_image_res[j * width + i] += result[j * width + i];
+                    integral_image_res[j * width + i] = result[j * width + i];
                 }
             }
         }
     }
 
+    // printf("Device %d, start_col %d, end_col %d, result array ", my_id, start_col, end_col);
+    // for (int i = 0; i < size; i++) {
+    //     printf("%u,", integral_image_res[i]);
+    // }
+    // printf("\n");
     return integral_image_res;
 }
 
@@ -179,6 +198,7 @@ int main(int argc, char *argv[]) {
     {
         for(unsigned long i = 0; i < one_color_channel_data_size; i++)
         {
+            // one_color_channel_data[i] = i;
             one_color_channel_data[i] = bmpInfo.data[3 * i];
         }
     }
