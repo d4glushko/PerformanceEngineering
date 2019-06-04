@@ -3,13 +3,14 @@
 #include <stdlib.h>
 #include <sys/times.h>
 #include <time.h>
-#include <iostream>
-#include <thread>
 #include <fstream>
 #include <stdint.h>
 #include <cmath>
+#include <mpi.h>
 
 using namespace std;
+
+const float msec_const = 1000.0;
 
 struct BMPInfo 
 { 
@@ -29,7 +30,7 @@ BMPInfo readBMP(const char* filename)
     int height = *(int*)&info[22];
 
     int size = 3 * width * height;
-    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    unsigned char* data = (unsigned char *)malloc(size * sizeof(unsigned char)); // allocate 3 bytes per pixel
     a = fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
     fclose(f);
 
@@ -44,75 +45,90 @@ BMPInfo readBMP(const char* filename)
     return bmpInfo;
 }
 
-void array_min(unsigned char const & result, unsigned char* array, unsigned long start, unsigned long end) {
-    unsigned char & min = const_cast<unsigned char &>(result);
-    min = 255;
+unsigned char array_min(unsigned char* array, unsigned long start, unsigned long end) {
+    unsigned char res = 255;
     for (unsigned long i = start; i < end; i++) {
-        if (array[i] < min) {
-            min = array[i];
+        if (array[i] < res) {
+            res = array[i];
         }
     }
+    return res;
 }
 
-unsigned char multithread_array_min(unsigned char* array, unsigned long size) {
-    unsigned int threads_number = thread::hardware_concurrency() - 3;
-    if (threads_number < 1) {
-        threads_number = 1;
+unsigned char mpi_array_min(unsigned char* array, unsigned long size, int my_id, int master_id, int num_procs) {
+    unsigned char min = 255;
+    unsigned char res = 255;
+    MPI_Status status;
+    unsigned long items_per_one_device = int(size / num_procs);
+    if (my_id == num_procs - 1) {
+        min = array_min(array, my_id * items_per_one_device, size);
+    } else {
+        min = array_min(array, my_id * items_per_one_device, (my_id + 1) * items_per_one_device);
     }
-
-    unsigned long items_per_one_thread = int(size / threads_number);
-    
-    unsigned char *results = (unsigned char *)malloc(threads_number * sizeof(unsigned char));
-    thread threads[threads_number];
-
-    threads[threads_number - 1] = thread(
-        array_min,
-        ref(results[threads_number - 1]),
-        ref(array),
-        (threads_number - 1) * items_per_one_thread,
-        size
-    );
-    for (int i = 0; i < threads_number - 1; i++) {
-        threads[i] = thread(
-            array_min, 
-            ref(results[i]), 
-            ref(array),
-            i * items_per_one_thread,
-            (i + 1) * items_per_one_thread
-        );
-    }
-
-    unsigned char result = 255;
-    for (int i = 0; i < threads_number; i++){
-        threads[i].join();
-        result += results[i];
-        if (results[i] < result) {
-            result = results[i];
+    res = min;
+    if (my_id != master_id) {
+        MPI_Send (&min, 1, MPI_UINT64_T, master_id, 1, MPI_COMM_WORLD);
+    } else {
+        for (int i = 1; i < num_procs; i++) {
+            MPI_Recv(&min, 1, MPI_UINT64_T, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            if (min < res) {
+                res = min;
+            }
         }
     }
-    free(results);
-    return result;
+
+    return res;
 }
 
 int main(int argc, char *argv[]) {
-    const char *filename = "1.bmp";
+    clock_t start_t;
+    clock_t end_t;
+    clock_t clock_delta;
+    double clock_delta_msec;
+    int master = 0;
+    int my_id;
+    int numprocs;
+    BMPInfo bmpInfo;
+    unsigned long one_color_channel_data_size;
+    unsigned char* one_color_channel_data;
 
-    BMPInfo bmpInfo = readBMP(filename);
-
-    unsigned long one_color_channel_data_size = bmpInfo.size / 3;
-    unsigned char* one_color_channel_data = new unsigned char[one_color_channel_data_size];
-
-    for(unsigned long i = 0; i < one_color_channel_data_size; i++)
+    MPI_Init ( &argc, &argv );
+    MPI_Comm_size ( MPI_COMM_WORLD, &numprocs );
+    MPI_Comm_rank ( MPI_COMM_WORLD, &my_id );
+    if (my_id == master)
     {
-        one_color_channel_data[i] = bmpInfo.data[3 * i];
+        const char *filename = "1.bmp";
+
+        bmpInfo = readBMP(filename);
+
+        one_color_channel_data_size = bmpInfo.size / 3;
     }
 
-    auto t_start = std::chrono::high_resolution_clock::now();
-    unsigned char min = multithread_array_min(one_color_channel_data, one_color_channel_data_size);
-    auto t_end = std::chrono::high_resolution_clock::now();
+    MPI_Bcast(&one_color_channel_data_size, 1, MPI_UNSIGNED_LONG, master, MPI_COMM_WORLD);
+    one_color_channel_data = (unsigned char *)malloc(one_color_channel_data_size * sizeof(unsigned char));
 
-    printf("Sum: \t %d \t\n", min);
-    printf("CPU min: \t %.6f ms \t\n", std::chrono::duration<double, std::milli>(t_end-t_start).count());
+    if (my_id == master)
+    {
+        for(unsigned long i = 0; i < one_color_channel_data_size; i++)
+        {
+            one_color_channel_data[i] = bmpInfo.data[3 * i];
+        }
+    }
+    if (my_id == master) {
+        start_t = clock();
+    }
+    MPI_Bcast(one_color_channel_data, one_color_channel_data_size, MPI_UNSIGNED_CHAR, master, MPI_COMM_WORLD);
+    unsigned char min = mpi_array_min(one_color_channel_data, one_color_channel_data_size, my_id, master, numprocs);
+
+    if (my_id == master) {
+        end_t = clock();
+
+        clock_delta = end_t - start_t;
+        clock_delta_msec = (double) (clock_delta / msec_const);
+
+        printf("Min: \t %d \t\n", min);
+        printf("CPU min: \t %.6f ms \t\n", clock_delta_msec);
+    }
 
     free(one_color_channel_data);
 }
