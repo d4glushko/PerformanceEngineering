@@ -16,6 +16,8 @@ struct BMPInfo
 { 
    unsigned char* data; 
    int size;
+   int width;
+   int height;
 };
 
 BMPInfo readBMP(const char* filename)
@@ -40,7 +42,7 @@ BMPInfo readBMP(const char* filename)
             data[i] = data[i+2];
             data[i+2] = tmp;
     }
-    BMPInfo bmpInfo = {data, size};
+    BMPInfo bmpInfo = {data, size, width, height};
 
     return bmpInfo;
 }
@@ -160,7 +162,13 @@ int main(int argc, char *argv[]) {
         bmpInfo = readBMP(filename);
 
         one_color_channel_data_size = bmpInfo.size / 3;
+        width = bmpInfo.width;
+        height = bmpInfo.height;
     }
+
+    // one_color_channel_data_size = 12;
+    // width = 3;
+    // height = 4;
 
     MPI_Bcast(&one_color_channel_data_size, 1, MPI_UNSIGNED_LONG, master, MPI_COMM_WORLD);
     MPI_Bcast(&width, 1, MPI_INT, master, MPI_COMM_WORLD);
