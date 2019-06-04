@@ -54,17 +54,16 @@ u_int64_t array_sum(unsigned char* array, unsigned long start, unsigned long end
 }
 
 u_int64_t mpi_array_sum(unsigned char* array, unsigned long size, int my_id, int master_id, int num_procs) {
-    printf("Start");
     u_int64_t sum = 0;
     u_int64_t res = 0;
     MPI_Status status;
     unsigned long items_per_one_device = int(size / num_procs);
     if (my_id == num_procs - 1) {
         sum = array_sum(array, my_id * items_per_one_device, size);
+    } else {
+        sum = array_sum(array, my_id * items_per_one_device, (my_id + 1) * items_per_one_device);
     }
-    sum = array_sum(array, my_id * items_per_one_device, (my_id + 1) * items_per_one_device);
     res = sum;
-    printf("%d", my_id);
     if (my_id != master_id) {
         MPI_Send (&sum, 1, MPI_UINT64_T, master_id, 1, MPI_COMM_WORLD);
     } else {
@@ -102,11 +101,10 @@ int main(int argc, char *argv[]) {
     }
 
     MPI_Bcast(&one_color_channel_data_size, 1, MPI_UNSIGNED_LONG, master, MPI_COMM_WORLD);
+    one_color_channel_data = (unsigned char *)malloc(one_color_channel_data_size * sizeof(unsigned char));
 
     if (my_id == master)
     {
-        one_color_channel_data = (unsigned char *)malloc(one_color_channel_data_size * sizeof(unsigned char));
-
         for(unsigned long i = 0; i < one_color_channel_data_size; i++)
         {
             one_color_channel_data[i] = bmpInfo.data[3 * i];
@@ -115,9 +113,7 @@ int main(int argc, char *argv[]) {
     if (my_id == master) {
         start_t = clock();
     }
-    printf("start %d\n", my_id);
-    MPI_Bcast(&(one_color_channel_data[0]), one_color_channel_data_size, MPI_UNSIGNED_CHAR, master, MPI_COMM_WORLD);
-    printf("start %d\n", my_id);
+    MPI_Bcast(one_color_channel_data, one_color_channel_data_size, MPI_UNSIGNED_CHAR, master, MPI_COMM_WORLD);
     u_int64_t sum = mpi_array_sum(one_color_channel_data, one_color_channel_data_size, my_id, master, numprocs);
 
     if (my_id == master) {
@@ -128,7 +124,7 @@ int main(int argc, char *argv[]) {
 
         printf("Sum: \t %lu \t\n", sum);
         printf("CPU sum: \t %.6f ms \t\n", clock_delta_msec);
-
-        free(one_color_channel_data);
     }
+
+    free(one_color_channel_data);
 }
