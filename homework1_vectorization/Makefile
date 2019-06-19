@@ -1,4 +1,8 @@
 all:
+	gcc -O0 -g3 -march=skylake -o compiled/vectors_with_vectorization ./vectors_with_vectorization.cpp
+	gcc -O3 -g3 -march=skylake -o compiled/vectors_with_vectorization_o3 ./vectors_with_vectorization.cpp
+	gcc -O0 -g3 -march=skylake -o compiled/vectors_without_vectorization ./vectors_without_vectorization.cpp
+	gcc -O3 -g3 -march=skylake -o compiled/vectors_without_vectorization_o3 ./vectors_without_vectorization.cpp
 	gcc -O0 -g3 -march=skylake -o compiled/matrices_with_vectorization ./matrices_with_vectorization.cpp
 	gcc -O3 -g3 -march=skylake -o compiled/matrices_with_vectorization_o3 ./matrices_with_vectorization.cpp
 	gcc -O0 -g3 -march=skylake -o compiled/matrices_without_vectorization ./matrices_without_vectorization.cpp
